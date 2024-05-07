@@ -10,7 +10,7 @@ Kod nie jest wzorem dobrej jakoĹci programowania w Pythonie, nie jest rĂłwn
 
 Nie ma obowiÄzku uĹźywania tego kodu.
 """
-
+from __future__ import annotations
 import numpy as np
 
 #ToDo tu prosze podac pierwsze cyfry numerow indeksow
@@ -48,30 +48,53 @@ def d_nloss(y_out, y):
 
 ###############################################################################
 # I want to create a network for input data dimention equal 2 and number of inner layers greater than two (it will allow me to go into grater sizes later)
+# assumptions: all inner layers have the same number of neurons
 class Neuron:
-    def __init__(self, x, wages, activation_function):
+    def __init__(self, x:np.array, wages:np.array=None, activation_function = sigmoid, wages_scale_factor=None):
+        self.BIAS = 1
+        if not wages_scale_factor:
+            self.wages_scale_factor = 1/np.sqrt(self.size)
         self.x = x
         self.y = None # skalar output
+        self.size = x.size
+        if not wages_scale_factor:
+            self.wages_scale_factor = 1/np.sqrt(self.size)
         self.wages = wages # niech len(wages) = len(x) + 1 # because there is a bias at start for activation function
         self.activation_function = activation_function # for example sigmoid
-class NLayer:
+        if not wages:
+            self.initiate_wages()
+
+    def initiate_wages(self):
+        self.wages = self.wages_scale_factor * np.random.uniform(-self.size, self.size)
+
+    def calculate_output() -> float:
+        activate_value = (self.x * self.wages).sum() + self.BIAS
+        return self.activation_function(activate_value)
+
+
+class Layer:
     def __init__(self, size, else):
         self.size = size
+
 ###############################################################################
 class DlNet:
-    def __init__(self, x, y):
+    def __init__(self, x, y, number_of_layers, input_dimentionality=2, HIDDEN_L_SIZE = 9):
         self.x = x
         self.y = y
         self.y_out = 0
-
+        self.input_dimentionality = input_dimentionality
         self.HIDDEN_L_SIZE = 9 # number of neurons in a single layer
         self.LR = 0.003 # learning rate
-
-#ToDo
+        self.input_layer = Layer(self.HIDDEN_L_SIZE)
+        self.output_layer = Layer(self.HIDDEN_L_SIZE)
+        self.hidden_layers = []
+        if number_of_layers> 2:
+            for i in range(number_of_layers-2):
+                self.hidden_layers.append(Layer(self.HIDDEN_L_SIZE))
 
 
     def forward(self, x): # used by train when we want to achieve result value of the aproctimator and also used by predict simply to get results
-        pass
+        
 #ToDo
 
     def predict(self, x): # used after the network is tested
