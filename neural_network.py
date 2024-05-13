@@ -217,6 +217,7 @@ class DlNet:
 if __name__ == "__main__":
     #ToDo tu prosze podac pierwsze cyfry numerow indeksow
     # JG 324960
+    # KK 318380
     p = [3, 7]
 
     L_BOUND = -5
