@@ -30,6 +30,7 @@ def nloss(y_out, y):
 def d_nloss(y_out, y):
     return 2*(y_out - y)
 
+
 ###############################################################################
 
 class Neuron:
@@ -57,12 +58,20 @@ class Neuron:
     def evaluate(
         self, input: np.array, activation_function_included=True
     ) -> float:
+        # TODO: Error probably involves the bias of a neuron (the last of wages - I was not consistant whith its usage and operations on it)
+        print("In evaluate of Neuron")
+        print(f'input:{input}')
+        print(f'activation_function_included {activation_function_included}')
+        print(f'self.wages: {self.wages}')
         result = (input * self.wages[:-1]).sum() + self.wages[-1]
+        print(f"result: {result}")
+        print("End")
         if activation_function_included:
             return self.activation_function(result)[0]
         return result
 
 
+###############################################################################
 class Layer:
     def __init__(
         self, input_size, neurons_num,
@@ -115,6 +124,7 @@ class Layer:
         )))
 
 
+###############################################################################
 class DlNet:
     def __init__(
         self, x, y, number_of_layers, input_dimentionality=1,
@@ -125,7 +135,7 @@ class DlNet:
         self.y_out = 0
         self.input_dimentionality = input_dimentionality
         self.HIDDEN_L_SIZE = HIDDEN_L_SIZE  # number of neurons in a single layer
-        self.LR = 0.0005  # learning rate
+        self.LR = 0.003  # learning rate
         self.input_layer = Layer(
             input_dimentionality, HIDDEN_L_SIZE, sigmoid
         )
@@ -141,15 +151,17 @@ class DlNet:
     def forward(self, x):
         every_layer_input = []
         current_input = x
-        every_layer_input.append(np.array(current_input+[1]))
+        every_layer_input.append(np.concatenate([current_input, np.array([1])]))
+        # every_layer_input.append(np.array(current_input+[1]))
+        print(every_layer_input)
         current_input = self.input_layer.evaluate(current_input)
         for layer in self.hidden_layers:
             every_layer_input.append(current_input)
             current_input = layer.evaluate(current_input)
 
         every_layer_input.append(np.concatenate([current_input, [1]], axis=0))
-        current_input = self.output_layer.evaluate(current_input, False)
-        return (current_input, every_layer_input)
+        output = self.output_layer.evaluate(current_input, False)
+        return (output, every_layer_input)
 
     def predict(self, x):  # used after the network is tested
         return self.forward(x)[0]
@@ -184,16 +196,17 @@ class DlNet:
         neurons.append(self.get_layer_neurons(self.output_layer))
         return neurons
 
-    def backward(self, x, y):
+    def backward(self, x, y, predicted, all_inputs_reversed):
         neurons = self.get_all_neurons()
-        dsums = []
+        print(all_inputs_reversed)
+        dsums = []  # list of all dsums reversed
         actual = y
-        predicted, all_inputs = self.forward(x)
-        # print(self.error_function(actual, predicted))
+        #print(self.error_function(actual, predicted))
         current_dsum = self.error_function_gradient(predicted, actual)
+        #print(current_dsum)
         dsums.append([current_dsum])
         previous_layer = self.output_layer
-        for indx, layer in enumerate(reversed(self.hidden_layers)): # propagaetion from last to first
+        for indx, layer in enumerate(reversed(self.hidden_layers)):  # propagation from last to first
             current_gradient = layer.propagate_backward_dsum(
                 current_dsum, previous_layer
             )
@@ -204,20 +217,23 @@ class DlNet:
         )
         dsums.append(current_gradient)
         dsums = list(reversed(dsums))
+        #all_inputs_reversed = list(reversed(all_inputs_reversed))
         for inx, (layer_neurons, layer_dsum) in enumerate(zip(neurons, dsums)):
             for neuron, dsum in zip(layer_neurons, layer_dsum):
-                neuron.wages = neuron.wages - self.LR * dsum * all_inputs[inx]
+                neuron.wages = neuron.wages - self.LR * dsum * all_inputs_reversed[inx]
 
-    def train(self, x_set, y_set, iters):
+    def train(self, x_set: np.array[np.array], y_set, iters):
 
         for i in range(0, iters):
             print(f":{i}")
             for x, y in zip(x_set, y_set):
-                self.backward([x], [y])
+                print(f"np.array(x): {np.array([x])}")
+                predicted, all_inputs = self.forward(np.array(x))
+                self.backward([x], [y], predicted, all_inputs)
 
 ###############################################################################
 if __name__ == "__main__":
-    #ToDo tu prosze podac pierwsze cyfry numerow indeksow
+    # TODO: tu prosze podac pierwsze cyfry numerow indeksow
     # JG 324960
     # KK 318380
     p = [3, 7]
@@ -232,21 +248,29 @@ if __name__ == "__main__":
         return np.sign(x)
 
     def q2(x):
-        return 5 * np.sin(x)
+        return 100 * np.sin(x)
 
     def q3(x):
-        return -4*x
+        return x
+
+    def q4(x):
+        return x/x
+
+    def q5(x):
+        return np.abs(x)
 
     x = np.linspace(L_BOUND, U_BOUND, 100)
-    y = q2(x)
+    converted_x = np.array([np.array([xx]) for xx in x])
+    y = q3(x)
+    converted_y = np.array([np.array([yy]) for yy in y])
 
     # np.random.seed(1)
 
     # currently there is an error with vector input - function with input_dimentionality > 1
     # and with number of layers > 2
     NUMBER_OF_LAYERS = 2
-    nn = DlNet(x, y, NUMBER_OF_LAYERS, input_dimentionality=1, HIDDEN_L_SIZE=9)
-    nn.train(x, y, 5000)
+    nn = DlNet(converted_x, converted_y, NUMBER_OF_LAYERS, input_dimentionality=1, HIDDEN_L_SIZE=2)
+    nn.train(converted_x, converted_y, 100)
 
     yh = []  # ToDo tu umiesciÄ wyniki (y) z sieci
 
@@ -254,15 +278,15 @@ if __name__ == "__main__":
         yh.append(nn.predict(x_val)[0])
     import matplotlib.pyplot as plt
 
-
     fig = plt.figure()
-    # ax = fig.add_subplot(1, 1, 1)
-    # ax.spines['left'].set_position('center')
-    # ax.spines['bottom'].set_position('zero')
-    # ax.spines['right'].set_color('none')
-    # ax.spines['top'].set_color('none')
-    # ax.xaxis.set_ticks_position('bottom')
-    # ax.yaxis.set_ticks_position('left')
+    ax = fig.add_subplot(1, 1, 1)
+    ax.axis([-5, 5, -100, 100])
+    ax.spines['left'].set_position('center')
+    ax.spines['bottom'].set_position('zero')
+    ax.spines['right'].set_color('none')
+    ax.spines['top'].set_color('none')
+    ax.xaxis.set_ticks_position('bottom')
+    ax.yaxis.set_ticks_position('left')
 
     print(y)
     print(yh)
