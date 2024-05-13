@@ -30,9 +30,7 @@ def nloss(y_out, y):
 def d_nloss(y_out, y):
     return 2*(y_out - y)
 
-
 ###############################################################################
-
 
 class Neuron:
     def __init__(
@@ -177,7 +175,7 @@ class DlNet:
     def get_layer_neurons(self, layer):
         return layer.neurons
 
-    def get_all_neurons(self) -> List[List[Neuron]]:  # TODO: popraw
+    def get_all_neurons(self) -> List[List[Neuron]]:
 
         neurons = []
         neurons.append(self.get_layer_neurons(self.input_layer))
@@ -196,10 +194,14 @@ class DlNet:
         dsums.append([current_dsum])
         previous_layer = self.output_layer
         for indx, layer in enumerate(reversed(self.hidden_layers)): # propagaetion from last to first
-            current_gradient = layer.propagate_backward_dsum(current_dsum, previous_layer)
+            current_gradient = layer.propagate_backward_dsum(
+                current_dsum, previous_layer
+            )
             dsums.append(current_gradient)
             previous_layer = layer
-        current_gradient = self.input_layer.propagate_backward_dsum(current_dsum, previous_layer)
+        current_gradient = self.input_layer.propagate_backward_dsum(
+            current_dsum, previous_layer
+        )
         dsums.append(current_gradient)
         dsums = list(reversed(dsums))
         for inx, (layer_neurons, layer_dsum) in enumerate(zip(neurons, dsums)):
@@ -229,21 +231,21 @@ if __name__ == "__main__":
         return np.sign(x)
 
     def q2(x):
-        return np.sin(0.5*x)
+        return 5 * np.sin(x)
 
     def q3(x):
-        return 4*x
+        return -4*x
 
     x = np.linspace(L_BOUND, U_BOUND, 100)
-    y = q1(x)
+    y = q2(x)
 
     # np.random.seed(1)
 
     # currently there is an error with vector input - function with input_dimentionality > 1
     # and with number of layers > 2
     NUMBER_OF_LAYERS = 2
-    nn = DlNet(x, y, NUMBER_OF_LAYERS, input_dimentionality=1, HIDDEN_L_SIZE=7)
-    nn.train(x, y, 1000)
+    nn = DlNet(x, y, NUMBER_OF_LAYERS, input_dimentionality=1, HIDDEN_L_SIZE=9)
+    nn.train(x, y, 5000)
 
     yh = []  # ToDo tu umiesciÄ wyniki (y) z sieci
 
@@ -267,5 +269,5 @@ if __name__ == "__main__":
     plt.plot(x, y, 'r')
     plt.plot(x, yh, 'b')
 
-    plt.savefig('foo1__signum_1000_iter.png')
+    plt.savefig('foo.png')
     plt.show()
