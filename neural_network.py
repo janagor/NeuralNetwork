@@ -32,8 +32,8 @@ def d_nloss(y_out, y):
 
 
 ###############################################################################
-# I want to create a network for input data dimention equal 2 and number of inner layers greater than two (it will allow me to go into grater sizes later)
-# assumptions: all inner layers have the same number of neurons
+
+
 class Neuron:
     def __init__(
         self, size: int, activation_function=sigmoid,
@@ -130,7 +130,7 @@ class DlNet:
         self.LR = 0.0005  # learning rate
         self.input_layer = Layer(
             input_dimentionality, HIDDEN_L_SIZE, sigmoid
-        )  # TODO:
+        )
         self.output_layer = Layer(self.HIDDEN_L_SIZE, 1, None, 0)
         # print(self.get_layer_neurons(self.output_layer)[0].wages)
         self.hidden_layers = []
@@ -140,7 +140,7 @@ class DlNet:
                     self.HIDDEN_L_SIZE, self.HIDDEN_L_SIZE, activation_function
                 ))
 
-    def forward(self, x):  # used by train when we want to achieve result value of the aproctimator and also used by predict simply to get results
+    def forward(self, x):
         every_layer_input = []
         current_input = x
         every_layer_input.append(np.array(current_input+[1]))
@@ -186,7 +186,7 @@ class DlNet:
         neurons.append(self.get_layer_neurons(self.output_layer))
         return neurons
 
-    def backward(self, x, y):  # I suppose it is used when training to update and include impact of a given x on network hiperparams (thus also results)\
+    def backward(self, x, y):
         neurons = self.get_all_neurons()
         dsums = []
         actual = y
