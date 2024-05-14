@@ -4,7 +4,7 @@
 from __future__ import annotations
 import numpy as np
 from typing import Union, List, Tuple
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 # f logistyczna jako przyklad sigmoidalej
 def sigmoid(x):
@@ -143,10 +143,9 @@ class DlNet:
                 ))
 
         #quality measurement variables
-        self.mse = []
-        self.mse_final = 0
-        self.mae = []
-        self.mae_final = []
+        self.mse = 0
+        self.mae = 0
+        self.r2 = 0
         self.y_true_arr = []
         self.y_pred_arr = []
 
@@ -246,30 +245,21 @@ class DlNet:
                 predicted, all_inputs = self.forward(np.array(x))
                 self.backward(x, y, predicted, all_inputs)
                 # average += self.error_function(y, predicted)
-                self.error_save(y, predicted)
-            self.quality_measure()
             # average = average/iters
             # if average[0] < prev_average:
             #     print(average[0])
             #     prev_average = average[0]
 
-    def error_save(self, y_true, y_pred):
+    def values_save(self, y_true, y_pred):
         self.y_true_arr.append(y_true)
         self.y_pred_arr.append(y_pred)
 
     def quality_measure(self):
         y_true = self.y_true_arr
         y_pred = self.y_pred_arr
-        self.mse.append(mean_squared_error(y_true=y_true, y_pred=y_pred))
-        self.mse_final = self.mse[-1]
-        self.mae.append(mean_absolute_error(y_true=y_true, y_pred=y_pred))
-        self.mae_final = self.mae[-1]
-
-    def get_mse_final(self):  # getter for mean square error calculated in train funciton (returned newest value)
-        return self.mse_final
-    
-    def get_mae_final(self):   # getter for mean absolute error calculated in train funciton (returned newest value)
-        return self.mae_final
+        self.mse = mean_squared_error(y_true=y_true, y_pred=y_pred)
+        self.mae = mean_absolute_error(y_true=y_true, y_pred=y_pred)
+        self.r2 = r2_score(y_true=y_true, y_pred=y_pred)
     
     def get_mse_array(self):  # getter for list of values of mean square error calculated in train funciton (returned newest value)
         return self.mse
@@ -316,8 +306,9 @@ if __name__ == "__main__":
     # currently there is an error with vector input - function with input_dimentionality > 1
     # and with number of layers > 2
     NUMBER_OF_LAYERS = 2
-    ITERATIONS = 1500
-    nn = DlNet(converted_x, converted_y, NUMBER_OF_LAYERS, input_dimentionality=1, HIDDEN_L_SIZE=5)
+    ITERATIONS = 1000
+    HIDDEN_SIZE = 5
+    nn = DlNet(converted_x, converted_y, NUMBER_OF_LAYERS, input_dimentionality=1, HIDDEN_L_SIZE=HIDDEN_SIZE)
     nn.train(converted_x, converted_y, ITERATIONS)
     print(nn.get_all_wages())
     # print(nn.get_layer_wages(nn.output_layer))
@@ -328,6 +319,15 @@ if __name__ == "__main__":
         # print(type(x_val))
         # breakpoint()
         yh.append(nn.predict(np.array([x_val]))[0])
+
+    for y_true, y_pred in zip(y, yh):
+        nn.values_save(y_true=y_true, y_pred=y_pred)
+    nn.quality_measure()
+    print(f"Iters: {ITERATIONS}, Hidden layers: {NUMBER_OF_LAYERS-1}, Hl size: {HIDDEN_SIZE}")
+    print(f"MSE: {nn.mse}")
+    print(f"MAE: {nn.mae}")
+    print(f"R2: {nn.r2}")
+    
     import matplotlib.pyplot as plt
 
     fig = plt.figure()
@@ -347,30 +347,4 @@ if __name__ == "__main__":
     plt.plot(x, yh, 'b')
 
     plt.savefig('foo.png')
-    plt.show()
-
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 2, 1)
-    # ax.axis([-5, 5, -100, 100])
-    # ax.spines['left'].set_position('center')
-    # ax.spines['bottom'].set_position('zero')
-    # ax.spines['right'].set_color('none')
-    # ax.spines['top'].set_color('none')
-    # ax.xaxis.set_ticks_position('bottom')
-    # ax.yaxis.set_ticks_position('left')
-
-    # qulaity measurement values
-    iters = np.arange(1, len(nn.get_mse_array())+1, 1)
-    plt.plot(iters, nn.get_mse_array(), 'r')
-    
-    ax = fig.add_subplot(1, 2, 2)
-    # ax.axis([-5, 5, -100, 100])
-    # ax.spines['left'].set_position('center')
-    # ax.spines['bottom'].set_position('zero')
-    # ax.spines['right'].set_color('none')
-    # ax.spines['top'].set_color('none')
-    # ax.xaxis.set_ticks_position('bottom')
-    # ax.yaxis.set_ticks_position('left')
-    plt.plot(iters, nn.get_mae_array(), 'b')
-    # plt.savefig('quality.png')
     plt.show()
