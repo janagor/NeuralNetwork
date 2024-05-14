@@ -260,12 +260,6 @@ class DlNet:
         self.mse = mean_squared_error(y_true=y_true, y_pred=y_pred)
         self.mae = mean_absolute_error(y_true=y_true, y_pred=y_pred)
         self.r2 = r2_score(y_true=y_true, y_pred=y_pred)
-    
-    def get_mse_array(self):  # getter for list of values of mean square error calculated in train funciton (returned newest value)
-        return self.mse
-    
-    def get_mae_array(self):   # getter for list of values of mean absolute error in train funciton (returned newest value)
-        return self.mae
         
 
 ###############################################################################
@@ -301,50 +295,49 @@ if __name__ == "__main__":
     y = q(x)
     converted_y = np.array([np.array([yy]) for yy in y])
 
-    np.random.seed(1)
+    TESTS_NUMBER = 25
+    mse_sum = 0
+    mae_sum = 0
+    r2_sum = 0
+    for test in range(0, TESTS_NUMBER):
+        # currently there is an error with vector input - function with input_dimentionality > 1
+        # and with number of layers > 2
+        NUMBER_OF_LAYERS = 2
+        ITERATIONS = 500
+        HIDDEN_SIZE = 5
+        nn = DlNet(converted_x, converted_y, NUMBER_OF_LAYERS, input_dimentionality=1, HIDDEN_L_SIZE=HIDDEN_SIZE)
+        nn.train(converted_x, converted_y, ITERATIONS)
+        print(nn.get_all_wages())
 
-    # currently there is an error with vector input - function with input_dimentionality > 1
-    # and with number of layers > 2
-    NUMBER_OF_LAYERS = 2
-    ITERATIONS = 1000
-    HIDDEN_SIZE = 5
-    nn = DlNet(converted_x, converted_y, NUMBER_OF_LAYERS, input_dimentionality=1, HIDDEN_L_SIZE=HIDDEN_SIZE)
-    nn.train(converted_x, converted_y, ITERATIONS)
-    print(nn.get_all_wages())
-    # print(nn.get_layer_wages(nn.output_layer))
-    # breakpoint()
-    yh = []  # ToDo tu umiesciÄ wyniki (y) z sieci
+        yh = [] 
 
-    for x_val in x:
-        # print(type(x_val))
-        # breakpoint()
-        yh.append(nn.predict(np.array([x_val]))[0])
+        for x_val in x:
+            yh.append(nn.predict(np.array([x_val]))[0])
 
-    for y_true, y_pred in zip(y, yh):
-        nn.values_save(y_true=y_true, y_pred=y_pred)
-    nn.quality_measure()
+        for y_true, y_pred in zip(y, yh):
+            nn.values_save(y_true=y_true, y_pred=y_pred)
+        nn.quality_measure()
+        mse_sum += nn.mse
+        mae_sum += nn.mae
+        r2_sum += nn.r2
+        
     print(f"Iters: {ITERATIONS}, Hidden layers: {NUMBER_OF_LAYERS-1}, Hl size: {HIDDEN_SIZE}")
-    print(f"MSE: {nn.mse}")
-    print(f"MAE: {nn.mae}")
-    print(f"R2: {nn.r2}")
-    
-    import matplotlib.pyplot as plt
+    print(f"MSE: {mse_sum/TESTS_NUMBER}")
+    print(f"MAE: {mae_sum/TESTS_NUMBER}")
+    print(f"R2: {r2_sum/TESTS_NUMBER}")
+        # import matplotlib.pyplot as plt
 
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    # ax.axis([-5, 5, -100, 100])
-    ax.spines['left'].set_position('center')
-    ax.spines['bottom'].set_position('zero')
-    ax.spines['right'].set_color('none')
-    ax.spines['top'].set_color('none')
-    ax.xaxis.set_ticks_position('bottom')
-    ax.yaxis.set_ticks_position('left')
+        # fig = plt.figure()
+        # ax = fig.add_subplot(1, 1, 1)
+        # ax.spines['left'].set_position('center')
+        # ax.spines['bottom'].set_position('zero')
+        # ax.spines['right'].set_color('none')
+        # ax.spines['top'].set_color('none')
+        # ax.xaxis.set_ticks_position('bottom')
+        # ax.yaxis.set_ticks_position('left')
 
-    # print(y)
-    # print(yh)
-    # print(nn.output_layer.neurons[0].wages)
-    plt.plot(x, y, 'r')
-    plt.plot(x, yh, 'b')
+        # plt.plot(x, y, 'r')
+        # plt.plot(x, yh, 'b')
 
-    plt.savefig('foo.png')
-    plt.show()
+        # plt.savefig('foo.png')
+        # plt.show()
