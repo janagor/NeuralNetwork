@@ -3,14 +3,12 @@
 
 from __future__ import annotations
 import numpy as np
-from typing import Union, List
+from typing import Union, List, Tuple
 
 
 # f logistyczna jako przyklad sigmoidalej
 def sigmoid(x):
-    size = x.size
-    ones = np.ones(size)
-    return ones/(ones+np.exp(-x))
+    return 1/(1+np.exp(-x))
 
 
 #pochodna fun. 'sigmoid'
@@ -32,42 +30,36 @@ def d_nloss(y_out, y):
 
 
 ###############################################################################
-
 class Neuron:
     def __init__(
         self, size: int, activation_function=sigmoid,
-        wages_scale_factor=None, wage_value: float = None,
+        wages_scale_factor=None, wage_value: float = None, include_bias=True # currently we use wage_value as determiner
     ):
+        # size should not include BIAS - BIAS is automaticaly added
+        self.sums = None
         self.size = size
         self.activation_funcion = activation_function
         if not wages_scale_factor:
             self.wages_scale_factor = 1/np.sqrt(self.size)
-        # self.wages = wages # niech len(wages) = len(x) + 1 # because there is a bias at start for activation function
         self.activation_function = activation_function  # for example sigmoid
         self.initiate_wages(wage_value)  # they include BIAS
 
     def initiate_wages(self, wage_value=None):
         if wage_value == None:
             self.wages = self.wages_scale_factor * np.random.uniform(
-                -self.size, self.size, self.size+1
-            )  # last one is bias
+                -self.size, self.size, self.size+1 # there is bias
+            )  # last one is bias. At the start it will be equal 1
             self.wages[-1] = 1
         elif wage_value == 0:
-            self.wages = wage_value * np.ones(self.size+1)
+            self.wages = wage_value * np.ones(self.size) # no bias
 
     def evaluate(
         self, input: np.array, activation_function_included=True
     ) -> float:
-        # TODO: Error probably involves the bias of a neuron (the last of wages - I was not consistant whith its usage and operations on it)
-        print("In evaluate of Neuron")
-        print(f'input:{input}')
-        print(f'activation_function_included {activation_function_included}')
-        print(f'self.wages: {self.wages}')
-        result = (input * self.wages[:-1]).sum() + self.wages[-1]
-        print(f"result: {result}")
-        print("End")
+        result = np.dot(input, self.wages)
+        self.sums = result
         if activation_function_included:
-            return self.activation_function(result)[0]
+            return self.activation_function(result)
         return result
 
 
@@ -75,7 +67,7 @@ class Neuron:
 class Layer:
     def __init__(
         self, input_size, neurons_num,
-        activation_function=None, input_wage=None
+        activation_function=None, input_wage=None, include_bias=True
     ):
         self.input_size = input_size  # without BIAS
         self.neurons_num = neurons_num
@@ -103,25 +95,28 @@ class Layer:
     ) -> List[np.array]:
         # actual result_expected if next_layer != None
         # if next layer == None, next_result
-        current_results = []
+        cr = []
         for indx, neuron in enumerate(self.neurons):
-            msum = np.add.reduce(np.array(list(map(
-                lambda neuron_result, next_neuron:
-                neuron_result*next_neuron.wages[indx],
-                next_results, next_layer.neurons
-            ))))
-            current_results.append(d_sigmoid(msum))
-        # print(current_results)
-        return current_results
+            sum = np.zeros(len(next_results))
+            for result, neuron in zip(next_results, next_layer.neurons):
+                sum += result * neuron.wages[indx]
+            current_neuron = self.neurons[indx]
+            cr.append(sum*d_sigmoid(current_neuron.sums))
+        return cr
 
     def evaluate(
-        self, input: Union[np.array, float], activation_function_included=True
+        self, input: np.array, activation_function_included=True
     ) -> np.array:
-        # if self.input_size == 1:
-        #     input = np.array(input)
-        return np.array(list(map(
-            lambda neuron: neuron.evaluate(input, activation_function_included), self.neurons
-        )))
+        temp = list(map(
+            lambda neuron: neuron.evaluate(
+                input, activation_function_included
+            ),
+            self.neurons
+        ))
+
+        temp = np.array(temp)
+
+        return temp
 
 
 ###############################################################################
@@ -139,8 +134,8 @@ class DlNet:
         self.input_layer = Layer(
             input_dimentionality, HIDDEN_L_SIZE, sigmoid
         )
-        self.output_layer = Layer(self.HIDDEN_L_SIZE, 1, None, 0)
-        # print(self.get_layer_neurons(self.output_layer)[0].wages)
+        self.output_layer = Layer(self.HIDDEN_L_SIZE, 1, None, 0, False)
+
         self.hidden_layers = []
         if number_of_layers > 2:
             for i in range(number_of_layers-2):
@@ -148,26 +143,40 @@ class DlNet:
                     self.HIDDEN_L_SIZE, self.HIDDEN_L_SIZE, activation_function
                 ))
 
-    def forward(self, x):
+    def forward(self, x: np.array) -> Tuple[np.array, List[np.array]]:
         every_layer_input = []
+        #new
         current_input = x
-        every_layer_input.append(np.concatenate([current_input, np.array([1])]))
-        # every_layer_input.append(np.array(current_input+[1]))
-        print(every_layer_input)
-        current_input = self.input_layer.evaluate(current_input)
-        for layer in self.hidden_layers:
-            every_layer_input.append(current_input)
-            current_input = layer.evaluate(current_input)
-
+        #add
+        every_layer_input.append(
+            np.concatenate([current_input, np.array([1])])
+        )
+        #new
+        current_input = self.input_layer.evaluate(
+            np.concatenate([current_input, [1]], axis=0)
+        )
+        #add
         every_layer_input.append(np.concatenate([current_input, [1]], axis=0))
-        output = self.output_layer.evaluate(current_input, False)
+        for layer in self.hidden_layers:  # TODO: concatenation for hidden layers
+            #new
+            current_input = layer.evaluate(current_input)
+            #add
+            every_layer_input.append(current_input)
+
+        every_layer_input[-1] = every_layer_input[-1][:-1] # usunięcie ostatniego niepotrzebnego elementu
+        output = self.output_layer.evaluate(
+            current_input,
+            False
+        )
+        # print(output)
+        # breakpoint()
         return (output, every_layer_input)
 
     def predict(self, x):  # used after the network is tested
-        return self.forward(x)[0]
+        return (self.forward(x))[0]  # returns just output
 
     def error_function(self, x, x_actual):
-        return np.linalg.norm(x-x_actual)
+        return (x-x_actual) ** 2
 
     def error_function_gradient(self, x: np.array, x_actual: np.array):
         return 2 * (x - x_actual)
@@ -196,14 +205,14 @@ class DlNet:
         neurons.append(self.get_layer_neurons(self.output_layer))
         return neurons
 
-    def backward(self, x, y, predicted, all_inputs_reversed):
+    def backward(self, x, y, predicted, all_inputs):
         neurons = self.get_all_neurons()
-        print(all_inputs_reversed)
+
         dsums = []  # list of all dsums reversed
         actual = y
-        #print(self.error_function(actual, predicted))
+
         current_dsum = self.error_function_gradient(predicted, actual)
-        #print(current_dsum)
+
         dsums.append([current_dsum])
         previous_layer = self.output_layer
         for indx, layer in enumerate(reversed(self.hidden_layers)):  # propagation from last to first
@@ -217,26 +226,30 @@ class DlNet:
         )
         dsums.append(current_gradient)
         dsums = list(reversed(dsums))
-        #all_inputs_reversed = list(reversed(all_inputs_reversed))
         for inx, (layer_neurons, layer_dsum) in enumerate(zip(neurons, dsums)):
             for neuron, dsum in zip(layer_neurons, layer_dsum):
-                neuron.wages = neuron.wages - self.LR * dsum * all_inputs_reversed[inx]
+                neuron.wages = neuron.wages - self.LR * dsum * all_inputs[inx]
 
     def train(self, x_set: np.array[np.array], y_set, iters):
-
+        prev_average = 100000000
         for i in range(0, iters):
             print(f":{i}")
+            average = 0
             for x, y in zip(x_set, y_set):
-                print(f"np.array(x): {np.array([x])}")
                 predicted, all_inputs = self.forward(np.array(x))
-                self.backward([x], [y], predicted, all_inputs)
+                self.backward(x, y, predicted, all_inputs)
+                average += self.error_function(y, predicted)
+            average = average/iters
+            if average[0] < prev_average:
+                print(average[0])
+                prev_average = average[0]
 
 ###############################################################################
 if __name__ == "__main__":
     # TODO: tu prosze podac pierwsze cyfry numerow indeksow
     # JG 324960
     # KK 318380
-    p = [3, 7]
+    p = [3, 2]
 
     L_BOUND = -5
     U_BOUND = 5
@@ -248,7 +261,7 @@ if __name__ == "__main__":
         return np.sign(x)
 
     def q2(x):
-        return 100 * np.sin(x)
+        return np.sin(x)
 
     def q3(x):
         return x
@@ -261,26 +274,30 @@ if __name__ == "__main__":
 
     x = np.linspace(L_BOUND, U_BOUND, 100)
     converted_x = np.array([np.array([xx]) for xx in x])
-    y = q3(x)
+    y = q(x)
     converted_y = np.array([np.array([yy]) for yy in y])
 
-    # np.random.seed(1)
+    np.random.seed(1)
 
     # currently there is an error with vector input - function with input_dimentionality > 1
     # and with number of layers > 2
     NUMBER_OF_LAYERS = 2
-    nn = DlNet(converted_x, converted_y, NUMBER_OF_LAYERS, input_dimentionality=1, HIDDEN_L_SIZE=2)
-    nn.train(converted_x, converted_y, 100)
-
+    nn = DlNet(converted_x, converted_y, NUMBER_OF_LAYERS, input_dimentionality=1, HIDDEN_L_SIZE=9)
+    nn.train(converted_x, converted_y, 15000)
+    print(nn.get_all_wages())
+    # print(nn.get_layer_wages(nn.output_layer))
+    # breakpoint()
     yh = []  # ToDo tu umiesciÄ wyniki (y) z sieci
 
     for x_val in x:
-        yh.append(nn.predict(x_val)[0])
+        # print(type(x_val))
+        # breakpoint()
+        yh.append(nn.predict(np.array([x_val]))[0])
     import matplotlib.pyplot as plt
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    ax.axis([-5, 5, -100, 100])
+    # ax.axis([-5, 5, -100, 100])
     ax.spines['left'].set_position('center')
     ax.spines['bottom'].set_position('zero')
     ax.spines['right'].set_color('none')
@@ -288,9 +305,9 @@ if __name__ == "__main__":
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
 
-    print(y)
-    print(yh)
-    print(nn.output_layer.neurons[0].wages)
+    # print(y)
+    # print(yh)
+    # print(nn.output_layer.neurons[0].wages)
     plt.plot(x, y, 'r')
     plt.plot(x, yh, 'b')
 
