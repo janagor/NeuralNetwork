@@ -317,10 +317,15 @@ if __name__ == "__main__":
         for y_true, y_pred in zip(y, yh):
             nn.values_save(y_true=y_true, y_pred=y_pred)
         nn.quality_measure()
+        print(f"Iters: {ITERATIONS}, Hidden layers: {NUMBER_OF_LAYERS-1}, Hl size: {HIDDEN_SIZE}")
+        print(f"MSE: {nn.mse}")
+        print(f"MAE: {nn.mae}")
+        print(f"R2: {nn.r2}") 
         mse_sum += nn.mse
         mae_sum += nn.mae
         r2_sum += nn.r2
-        
+    
+    print("FINAL RESULTS")
     print(f"Iters: {ITERATIONS}, Hidden layers: {NUMBER_OF_LAYERS-1}, Hl size: {HIDDEN_SIZE}")
     print(f"MSE: {mse_sum/TESTS_NUMBER}")
     print(f"MAE: {mae_sum/TESTS_NUMBER}")
