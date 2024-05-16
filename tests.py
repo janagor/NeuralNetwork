@@ -82,6 +82,12 @@ def tests_multiple_instances(iterations: int=1000, hidden_size: int=5, tests_num
     print(f"R2 MIN: {np.min(r2_all)}")
     print(f"R2 STD: {np.std(r2_all)}")
     print("----------------------------")
+
+    # for latex copy/paste only
+    # print(str(hidden_size) + " & \\num{" + str(("%.3f" % (np.average(mse_all)))) + "}" + " & \\num{" + str(("%.3f" % (np.max(mse_all)))) + "}" + " & \\num{" + str(("%.3f" % (np.min(mse_all)))) + "}" + " & \\num{" + str(("%.3f" % (np.std(mse_all)))) + "}" + "\\\\ \\hline")
+    # print(str(hidden_size) + " & \\num{" + str(("%.3f" % (np.average(mae_all)))) + "}" + " & \\num{" + str(("%.3f" % (np.max(mae_all)))) + "}" + " & \\num{" + str(("%.3f" % (np.min(mae_all)))) + "}" + " & \\num{" + str(("%.3f" % (np.std(mae_all)))) + "}" + "\\\\ \\hline")
+    # print(str(hidden_size) + " & \\num{" + str(("%.3f" % (np.average(r2_all)))) + "}" + " & \\num{" + str(("%.3f" % (np.max(r2_all)))) + "}" + " & \\num{" + str(("%.3f" % (np.min(r2_all)))) + "}" + " & \\num{" + str(("%.3f" % (np.std(r2_all)))) + "}" + "\\\\ \\hline")
+    
     return np.average(mse_all), np.average(mae_all), np.average(r2_all)
 
 
@@ -123,10 +129,53 @@ def test_iterations(iterations_instances: np.array, hidden_size: int=5, tests_nu
     plt.savefig('r2_iterations.png')
     plt.show()
 
+def test_hidden_layer_size(hidden_layer_size_instances: np.array, iterations: int = 400, tests_number: int=1, seed: int=1):
+    results = []
+
+    for hl_size in hidden_layer_size_instances:
+        result = tests_multiple_instances(iterations, hl_size, tests_number, seed)
+        results.append(result)
+    x = hidden_layer_size_instances
+    y_mse, y_mae, y_r2 = zip(*results)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    # ax.spines['left'].set_position('center')
+    # ax.spines['bottom'].set_position('zero')
+    # ax.spines['right'].set_color('none')
+    # ax.spines['top'].set_color('none')
+    # ax.xaxis.set_ticks_position('bottom')
+    # ax.yaxis.set_ticks_position('left')
+    plt.xticks(ticks=hidden_layer_size_instances)
+    plt.plot(x, y_mse)
+    plt.title("Mean Square Error (MSE) value\ndepending on the hidden layer size.")
+    plt.xlabel("hidden layer sizes")
+    plt.ylabel("mse")
+    plt.savefig('mse_hl_size.png')
+    plt.show()
+
+
+    plt.xticks(ticks=hidden_layer_size_instances)
+    plt.plot(x, y_mae)
+    plt.xlabel("hidden layer sizes")
+    plt.ylabel("mae")
+    plt.title("Mean Absolute Error (MAE) value\ndepending on the hidden layer size.")
+    plt.savefig('mae_hl_size.png')
+    plt.show()
+
+
+    plt.xticks(ticks=hidden_layer_size_instances)
+    plt.plot(x, y_r2)
+    plt.xlabel("hidden layer sizes")
+    plt.ylabel("mse")
+    plt.title("R-squared (R2) value\ndepending on the hidden layer size.")
+    plt.savefig('r2_hl_size.png')
+    plt.show()
 
 if __name__ == "__main__":
-    iterations = np.array([100, 200, 400, 800, 1000, 2000, 4000])
+    iterations = 400
     # iterations = np.array([100, 200])
-    hidden_size = 5
+    hidden_size = np.array([1, 2, 3, 4, 5, 7, 9, 11, 13, 15, 20])
     tests_number = 5
-    test_iterations(iterations, hidden_size, tests_number, seed=1)
+    seed = np.random.randint(0, 10000)
+    test_hidden_layer_size(hidden_size, iterations, tests_number, seed=seed)
