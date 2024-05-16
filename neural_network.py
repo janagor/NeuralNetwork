@@ -239,7 +239,7 @@ class DlNet:
     def train(self, x_set: np.array[np.array], y_set, iters):
         # prev_average = 100000000
         for i in range(0, iters):
-            print(f":{i}")
+            # print(f":{i}")
             # average = 0
             for x, y in zip(x_set, y_set):
                 predicted, all_inputs = self.forward(np.array(x))
